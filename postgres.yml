@@ -1,0 +1,56 @@
+---
+- name: Setup PostgreSQL Server
+  hosts: postgres
+  become: yes
+
+  vars:
+    postgres_db: flaskdb
+    postgres_user: flaskuser
+    postgres_password: flaskpass
+
+  tasks:
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install PostgreSQL and dependencies
+      apt:
+        name:
+          - postgresql
+          - python3-psycopg2
+        state: present
+
+    - name: Ensure PostgreSQL service is started
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Allow PostgreSQL to listen on all interfaces
+      lineinfile:
+        path: /etc/postgresql/15/main/postgresql.conf
+        regexp: '^#?listen_addresses'
+        line: "listen_addresses = '*'"
+
+    - name: Allow remote subnet access
+      lineinfile:
+        path: /etc/postgresql/15/main/pg_hba.conf
+        line: "host all all 192.168.178.0/24 md5"
+
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
+        state: restarted
+
+    - name: Create database
+      become_user: postgres
+      postgresql_db:
+        name: "{{ postgres_db }}"
+
+    - name: Create database user
+      become_user: postgres
+      postgresql_user:
+        name: "{{ postgres_user }}"
+        password: "{{ postgres_password }}"
+        priv: "{{ postgres_db }}:ALL"
