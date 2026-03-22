@@ -1,0 +1,75 @@
+- name: Deploy Flask App
+  hosts: flask
+  become: yes
+
+  vars:
+    repo_url: https://github.com/aaronk123/hdipinfra.git
+    repo_dest: /opt/hdipinfra
+    app_dir: /opt/hdipinfra/flaskapp
+
+    db_host: "{{ hostvars[groups['postgres'][0]].ansible_host | default(groups['postgres'][0]) }}"
+    db_name: flaskdb
+    db_user: flaskuser
+    db_password: flaskpass
+
+  tasks:
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - python3-pip
+          - python3-venv
+          - git
+        update_cache: yes
+        state: present
+
+    - name: Clone HDIP repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        force: yes
+
+    - name: Create Python virtual environment
+      command: python3 -m venv venv
+      args:
+        chdir: "{{ app_dir }}"
+        creates: "{{ app_dir }}/venv"
+
+    - name: Install Python requirements
+      pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ app_dir }}/venv"
+
+    - name: Create Flask systemd service
+      copy:
+        dest: /etc/systemd/system/flaskapp.service
+        content: |
+          [Unit]
+          Description=Flask Infrastructure Demo
+          After=network.target
+
+          [Service]
+          User=ansibleuser
+          WorkingDirectory={{ app_dir }}
+          Environment=DB_HOST={{ db_host }}
+          Environment=DB_NAME={{ db_name }}
+          Environment=DB_USER={{ db_user }}
+          Environment=DB_PASS={{ db_password }}
+          ExecStart={{ app_dir }}/venv/bin/gunicorn -b 0.0.0.0:5000 app:app
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reexec
+
+    - name: Enable Flask service
+      systemd:
+        name: flaskapp
+        enabled: yes
+
+    - name: Restart Flask service
+      systemd:
+        name: flaskapp
+        state: restarted
