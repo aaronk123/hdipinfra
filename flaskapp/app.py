@@ -16,10 +16,10 @@ def health():
 def db_test():
 	try:
 		conn = psycopg2.connect(
-			host="192.168.178.134",
-			database="appdb",
-			user="appuser",
-			password="apppassword"
+    		host=os.environ.get("DB_HOST"),
+    		database=os.environ.get("DB_NAME"),
+    		user=os.environ.get("DB_USER"),
+   			password=os.environ.get("DB_PASS")
 		)
 		conn.close()
 		return "database connection successful"
