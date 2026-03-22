@@ -62,4 +62,14 @@
         role: "{{ postgres_user }}"
         privs: ALL
         type: database
+
+    - name: Create messages table
+      become_user: postgres
+      community.postgresql.postgresql_query:
+        db: "{{ postgres_db }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            content TEXT
+      );
       
