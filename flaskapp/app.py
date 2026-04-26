@@ -8,7 +8,7 @@ app = Flask(__name__)
 def home():
 	return "Infrastructure Automation Demo"
  
-@app.route("/health")
+@app.route("/status")
 def health():
 	return "ok"
  
